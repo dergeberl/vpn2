@@ -71,3 +71,14 @@ build-openvpn-exporter:
 	    -ldflags "-X 'main.Version=$(EFFECTIVE_VERSION)' -X 'main.ImageTag=$(IMAGE_TAG)'"\
 	    ./cmd/openvpn_exporter/main.go
 
+.PHONY: build-seed-server
+build-seed-server:
+	@CGO_ENABLED=0 GOOS=linux GOARCH=$(GOARCH) go build -o bin/seed-server  \
+	    -ldflags "-X 'main.Version=$(EFFECTIVE_VERSION)' -X 'main.ImageTag=$(IMAGE_TAG)'"\
+	    ./cmd/seed_server/main.go
+
+.PHONY: build-shoot-client
+build-shoot-client:
+	@CGO_ENABLED=0 GOOS=linux GOARCH=$(GOARCH) go build -o bin/shoot-client  \
+	    -ldflags "-X 'main.Version=$(EFFECTIVE_VERSION)' -X 'main.ImageTag=$(IMAGE_TAG)'"\
+	    ./cmd/shoot_client/main.go
