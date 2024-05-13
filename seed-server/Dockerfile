@@ -8,9 +8,10 @@ FROM golang:1.22.3 AS gobuilder
 WORKDIR /build
 COPY ./VERSION ./VERSION
 COPY ./.git ./.git
-COPY ./go ./go
+COPY ./cmd ./cmd
+COPY ./pkg ./pkg
 ARG TARGETARCH
-RUN cd go; make build-openvpn-exporter GOARCH=$TARGETARCH
+RUN make build-openvpn-exporter GOARCH=$TARGETARCH
 
 ############# builder
 FROM alpine:3.19.1 as builder
@@ -20,7 +21,7 @@ RUN apk add --update bash openvpn iptables iptables-legacy ncurses-libs bc && \
 
 WORKDIR /volume
 
-COPY --from=gobuilder /build/go/openvpn-exporter ./openvpn-exporter
+COPY --from=gobuilder /build/bin/openvpn-exporter ./openvpn-exporter
 
 ADD seed-server/network-connection.sh seed-server/firewall.sh ./
 

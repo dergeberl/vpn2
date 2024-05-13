@@ -8,9 +8,10 @@ FROM golang:1.22.3 AS gobuilder
 WORKDIR /build
 COPY ./VERSION ./VERSION
 COPY ./.git ./.git
-COPY ./go ./go
+COPY ./cmd ./cmd
+COPY ./pkg ./pkg
 ARG TARGETARCH
-RUN cd go; make build-acquire-ip GOARCH=$TARGETARCH
+RUN make build-acquire-ip GOARCH=$TARGETARCH
 
 ############# builder
 FROM alpine:3.19.1 as builder
@@ -20,7 +21,7 @@ RUN apk add --update bash openvpn iptables iptables-legacy ncurses-libs bc && \
 
 WORKDIR /volume
 
-COPY --from=gobuilder /build/go/acquire-ip ./acquire-ip
+COPY --from=gobuilder /build/bin/acquire-ip ./acquire-ip
 
 ADD shoot-client/network-connection.sh \
     shoot-client/path-controller.sh \
