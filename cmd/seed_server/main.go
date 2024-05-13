@@ -13,8 +13,6 @@ import (
 	"github.com/gardener/vpn2/cmd/seed_server/app"
 )
 
-var Version string
-
 func main() {
 	if err := app.NewCommand().ExecuteContext(signals.SetupSignalHandler()); err != nil {
 		fmt.Println(err)

@@ -2,13 +2,16 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+GARDENER_HACK_DIR    		  := $(shell go list -m -f "{{.Dir}}" github.com/gardener/gardener)/hack
 VERSION                       := $(shell cat VERSION)
+REPO_ROOT                     := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 REGISTRY                      := europe-docker.pkg.dev/gardener-project/public/gardener
 PREFIX                        := vpn
 SEED_SERVER_IMAGE_REPOSITORY  := $(REGISTRY)/$(PREFIX)-seed-server
 SEED_SERVER_IMAGE_TAG         := $(VERSION)
 SHOOT_CLIENT_IMAGE_REPOSITORY := $(REGISTRY)/$(PREFIX)-shoot-client
 SHOOT_CLIENT_IMAGE_TAG        := $(VERSION)
+LD_FLAGS                      := "-w $(shell bash $(GARDENER_HACK_DIR)/get-build-ld-flags.sh k8s.io/component-base $(REPO_ROOT)/VERSION "vpn2")"
 
 IMAGE_TAG             := $(VERSION)
 EFFECTIVE_VERSION     := $(VERSION)-$(shell git rev-parse HEAD)
@@ -57,28 +60,28 @@ test:
 	go test ./...
 
 .PHONY: build
-build: build-acquire-ip build-openvpn-exporter
+build: build-acquire-ip build-openvpn-exporter build-seed-server build-shoot-client
 
 .PHONY: build-acquire-ip
 build-acquire-ip:
 	@CGO_ENABLED=0 GOOS=linux GOARCH=$(GOARCH) GO111MODULE=on go build -o bin/acquire-ip \
-	    -ldflags "-X 'main.Version=$(EFFECTIVE_VERSION)' -X 'main.ImageTag=$(IMAGE_TAG)'"\
+	    -ldflags $(LD_FLAGS)\
 	    ./cmd/acquire_ip/main.go
 
 .PHONY: build-openvpn-exporter
 build-openvpn-exporter:
 	@CGO_ENABLED=0 GOOS=linux GOARCH=$(GOARCH) GO111MODULE=on go build -o bin/openvpn-exporter  \
-	    -ldflags "-X 'main.Version=$(EFFECTIVE_VERSION)' -X 'main.ImageTag=$(IMAGE_TAG)'"\
+	    -ldflags $(LD_FLAGS)\
 	    ./cmd/openvpn_exporter/main.go
 
 .PHONY: build-seed-server
 build-seed-server:
 	@CGO_ENABLED=0 GOOS=linux GOARCH=$(GOARCH) go build -o bin/seed-server  \
-	    -ldflags "-X 'main.Version=$(EFFECTIVE_VERSION)' -X 'main.ImageTag=$(IMAGE_TAG)'"\
+	    -ldflags $(LD_FLAGS)\
 	    ./cmd/seed_server/main.go
 
 .PHONY: build-shoot-client
 build-shoot-client:
 	@CGO_ENABLED=0 GOOS=linux GOARCH=$(GOARCH) go build -o bin/shoot-client  \
-	    -ldflags "-X 'main.Version=$(EFFECTIVE_VERSION)' -X 'main.ImageTag=$(IMAGE_TAG)'"\
+	    -ldflags $(LD_FLAGS)\
 	    ./cmd/shoot_client/main.go

@@ -6,6 +6,7 @@ import (
 	"github.com/gardener/gardener/pkg/logger"
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
+	"k8s.io/component-base/version"
 	"k8s.io/component-base/version/verflag"
 	"k8s.io/klog/v2"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -26,8 +27,7 @@ func InitRun(cmd *cobra.Command, name string) (logr.Logger, error) {
 	logf.SetLogger(log)
 	klog.SetLogger(log)
 
-	// TODO version
-	//log.Info("Starting "+name, "version", version.Get()) //nolint:logcheck
+	log.Info("Starting "+name, "version", version.Get()) //nolint:logcheck
 
 	// don't output usage on further errors raised during execution
 	cmd.SilenceUsage = true
