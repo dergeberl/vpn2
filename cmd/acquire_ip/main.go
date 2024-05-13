@@ -13,7 +13,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/gardener/vpn2/ippool"
+	"github.com/gardener/vpn2/pkg/ippool"
 )
 
 func mustGetEnv(name string) string {

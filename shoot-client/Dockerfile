@@ -8,6 +8,9 @@ FROM golang:1.22.3 AS gobuilder
 WORKDIR /build
 COPY ./VERSION ./VERSION
 COPY ./.git ./.git
+COPY ./Makefile ./Makefile
+COPY ./go.mod /go.sum ./
+RUN go mod download
 COPY ./cmd ./cmd
 COPY ./pkg ./pkg
 ARG TARGETARCH
