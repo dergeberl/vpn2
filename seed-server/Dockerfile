@@ -14,7 +14,7 @@ RUN go mod download
 COPY ./cmd ./cmd
 COPY ./pkg ./pkg
 ARG TARGETARCH
-RUN make build-openvpn-exporter GOARCH=$TARGETARCH
+RUN make build-openvpn-exporter build-seed-server GOARCH=$TARGETARCH
 
 ############# builder
 FROM alpine:3.19.1 as builder
@@ -25,6 +25,7 @@ RUN apk add --update bash openvpn iptables iptables-legacy ncurses-libs bc && \
 WORKDIR /volume
 
 COPY --from=gobuilder /build/bin/openvpn-exporter ./openvpn-exporter
+COPY --from=gobuilder /build/bin/seed-server ./seed-server
 
 ADD seed-server/network-connection.sh seed-server/firewall.sh ./
 
@@ -94,4 +95,4 @@ EXPOSE 1194
 
 # We use "exec" and "trap 'exit' TERM" in the bash script, otherwise,
 # the script won't recieve and react to SIGTERM
-CMD exec /network-connection.sh
+CMD exec /seed-server
