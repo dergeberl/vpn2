@@ -61,7 +61,6 @@ func Test_getCIDR(t *testing.T) {
 
 func Test_computeShootTargetAndAddr(t *testing.T) {
 	type want struct {
-		err    bool
 		subnet net.IPNet
 		target net.IP
 	}
@@ -89,13 +88,7 @@ func Test_computeShootTargetAndAddr(t *testing.T) {
 	for _, testcase := range tt {
 		t.Run(testcase.name, func(t *testing.T) {
 
-			subnet, target, err := computeShootTargetAndAddr(&testcase.vpnNetwork, 0)
-			if testcase.want.err && err == nil {
-				t.Fatal("want error, got nil")
-			}
-			if err != nil && !testcase.want.err {
-				t.Fatalf("got unwanted err: %s", err)
-			}
+			subnet, target := computeShootTargetAndAddr(&testcase.vpnNetwork, 0)
 			if !target.Equal(testcase.want.target) {
 				t.Errorf("want: %+v, got: %+v", testcase.want.target, *target)
 			}
@@ -113,7 +106,6 @@ func Test_computeShootTargetAndAddr(t *testing.T) {
 
 func Test_computeSeedTargetAndAddr(t *testing.T) {
 	type want struct {
-		err     bool
 		subnet  net.IPNet
 		targets []net.IP
 	}
@@ -148,13 +140,7 @@ func Test_computeSeedTargetAndAddr(t *testing.T) {
 	}
 	for _, testcase := range tt {
 		t.Run(testcase.name, func(t *testing.T) {
-			subnet, targets, err := computeSeedTargetAndAddr(testcase.acquiredIP, &testcase.vpnNetwork, testcase.haVPNClients)
-			if testcase.want.err && err == nil {
-				t.Fatal("want error, got nil")
-			}
-			if err != nil && !testcase.want.err {
-				t.Fatalf("got unwanted err: %s", err)
-			}
+			subnet, targets := computeSeedTargetAndAddr(testcase.acquiredIP, &testcase.vpnNetwork, testcase.haVPNClients)
 			for i, target := range targets {
 				if !target.Equal(testcase.want.targets[i]) {
 					t.Errorf("unequal targets at index %d: want: %+v, got: %+v", i, testcase.want.targets[i], target)

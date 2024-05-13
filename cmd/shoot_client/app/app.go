@@ -84,7 +84,7 @@ func getCIDR(networkCIDR string, ipFamily string) (*net.IPNet, error) {
 }
 
 // please change this name omg
-func computeShootTargetAndAddr(vpnNetwork *net.IPNet, vpnClientIndex int) (*net.IPNet, *net.IP, error) {
+func computeShootTargetAndAddr(vpnNetwork *net.IPNet, vpnClientIndex int) (*net.IPNet, *net.IP) {
 	_, addrLen := vpnNetwork.Mask.Size()
 
 	newIP := slices.Clone(vpnNetwork.IP.To4())
@@ -97,11 +97,11 @@ func computeShootTargetAndAddr(vpnNetwork *net.IPNet, vpnClientIndex int) (*net.
 
 	target := slices.Clone(newIP)
 	target[3] = byte(bondStart + 1)
-	return shootSubnet, &target, nil
+	return shootSubnet, &target
 }
 
 // please change this name omg
-func computeSeedTargetAndAddr(acquiredIP net.IP, vpnNetwork *net.IPNet, haVPNClients int) (*net.IPNet, []net.IP, error) {
+func computeSeedTargetAndAddr(acquiredIP net.IP, vpnNetwork *net.IPNet, haVPNClients int) (*net.IPNet, []net.IP) {
 	subnet := &net.IPNet{
 		IP:   acquiredIP,
 		Mask: net.CIDRMask(bondBits, 32),
@@ -113,8 +113,7 @@ func computeSeedTargetAndAddr(acquiredIP net.IP, vpnNetwork *net.IPNet, haVPNCli
 		targetIP[3] = byte(bondStart + i + 2)
 		targets = append(targets, targetIP)
 	}
-	return subnet, targets, nil
-
+	return subnet, targets
 }
 
 const (
