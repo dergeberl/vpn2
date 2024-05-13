@@ -10,6 +10,10 @@ SEED_SERVER_IMAGE_TAG         := $(VERSION)
 SHOOT_CLIENT_IMAGE_REPOSITORY := $(REGISTRY)/$(PREFIX)-shoot-client
 SHOOT_CLIENT_IMAGE_TAG        := $(VERSION)
 
+IMAGE_TAG             := $(VERSION)
+EFFECTIVE_VERSION     := $(VERSION)-$(shell git rev-parse HEAD)
+GOARCH                := amd64
+
 PATH                          := $(GOBIN):$(PATH)
 
 export PATH
@@ -38,3 +42,33 @@ docker-push:
 	@if ! docker images $(SHOOT_CLIENT_IMAGE_REPOSITORY) | awk '{ print $$2 }' | grep -q -F $(SHOOT_CLIENT_IMAGE_TAG); then echo "$(SHOOT_CLIENT_IMAGE_REPOSITORY) version $(SHOOT_CLIENT_IMAGE_TAG) is not yet built. Please run 'make shoot-client-docker-image'"; false; fi
 	@gcloud docker -- push $(SEED_SERVER_IMAGE_REPOSITORY):$(SEED_SERVER_IMAGE_TAG)
 	@gcloud docker -- push $(SHOOT_CLIENT_IMAGE_REPOSITORY):$(SHOOT_CLIENT_IMAGE_TAG)
+
+#.PHONY: revendor
+#revendor:
+#	@GO111MODULE=on go mod vendor
+#	@GO111MODULE=on go mod tidy
+
+.PHONY: check
+check:
+	go fmt ./...
+	go vet ./...
+
+.PHONY: test
+test:
+	go test ./...
+
+.PHONY: build
+build: build-acquire-ip build-openvpn-exporter
+
+.PHONY: build-acquire-ip
+build-acquire-ip:
+	@CGO_ENABLED=0 GOOS=linux GOARCH=$(GOARCH) GO111MODULE=on go build -o acquire-ip \
+	    -ldflags "-X 'main.Version=$(EFFECTIVE_VERSION)' -X 'main.ImageTag=$(IMAGE_TAG)'"\
+	    ./cmd/acquire_ip/main.go
+
+.PHONY: build-openvpn-exporter
+build-openvpn-exporter:
+	@CGO_ENABLED=0 GOOS=linux GOARCH=$(GOARCH) GO111MODULE=on go build -o openvpn-exporter  \
+	    -ldflags "-X 'main.Version=$(EFFECTIVE_VERSION)' -X 'main.ImageTag=$(IMAGE_TAG)'"\
+	    ./cmd/openvpn_exporter/main.go
+
