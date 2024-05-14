@@ -206,6 +206,9 @@ func kernelSettings(cfg config) error {
 	if err := sysctl.Enable("net.ipv6.conf.all.forwarding"); err != nil {
 		return err
 	}
+	if err := sysctl.Write("net.ipv4.ping_group_range", "0 65532"); err != nil {
+		return err
+	}
 	if err := sysctl.WriteInt("net.ipv4.tcp_keepalive_time", cfg.TCP.KeepAliveTime); err != nil {
 		return err
 	}
