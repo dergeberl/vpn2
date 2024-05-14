@@ -160,6 +160,7 @@ func configureBonding(ctx context.Context, log logr.Logger, cfg config, vpnNetwo
 	// - activate ARP requests (but not used for monitoring as use_carrier=1 and arp_validate=none by default)
 	// - using `primary tap0` to avoid ambiguity of selection if multiple devices are up (primary_reselect=always by default)
 	// - using `num_grat_arp 5` as safeguard on switching device
+	bond.Name = "bond0"
 	bond.Mode = netlink.BOND_MODE_ACTIVE_BACKUP
 	bond.FailOverMac = netlink.BOND_FAIL_OVER_MAC_ACTIVE
 	bond.ArpInterval = 1000
@@ -181,7 +182,7 @@ func configureBonding(ctx context.Context, log logr.Logger, cfg config, vpnNetwo
 			return err
 		}
 
-		err = netlink.LinkSetBondSlave(link, bond)
+		err = netlink.LinkSetMaster(link, bond)
 		if err != nil {
 			return err
 		}
@@ -313,7 +314,7 @@ func setIPTableRules(cfg config) error {
 		if err != nil {
 			return err
 		}
-		err = iptable.AppendUnique("filter", "INPUT", "-m", "-i", forwardDevice, "-j", "DROP")
+		err = iptable.AppendUnique("filter", "INPUT", "-i", forwardDevice, "-j", "DROP")
 		if err != nil {
 			return err
 		}
@@ -350,7 +351,7 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 
 	dev := "tun0"
 	if cfg.VPNServerIndex != "" {
-		dev = fmt.Sprintf("tab%s", cfg.VPNServerIndex)
+		dev = fmt.Sprintf("tap%s", cfg.VPNServerIndex)
 	}
 
 	cmd := exec.CommandContext(ctx, "openvpn", "--dev", dev, "--remote", cfg.Endpoint, "--config", "openvpn.config")
