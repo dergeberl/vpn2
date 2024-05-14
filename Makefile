@@ -27,11 +27,11 @@ tidy:
 
 .PHONY: seed-server-docker-image
 seed-server-docker-image:
-	@docker build -t $(SEED_SERVER_IMAGE_REPOSITORY):$(SEED_SERVER_IMAGE_TAG) -f seed-server/Dockerfile --rm .
+	@docker build --platform=linux/$(ARCH) -t $(SEED_SERVER_IMAGE_REPOSITORY):$(SEED_SERVER_IMAGE_TAG) -f seed-server/Dockerfile --rm .
 
 .PHONY: shoot-client-docker-image
 shoot-client-docker-image:
-	@docker build -t $(SHOOT_CLIENT_IMAGE_REPOSITORY):$(SHOOT_CLIENT_IMAGE_TAG) -f shoot-client/Dockerfile --rm .
+	@docker build --platform=linux/$(ARCH) -t $(SHOOT_CLIENT_IMAGE_REPOSITORY):$(SHOOT_CLIENT_IMAGE_TAG) -f shoot-client/Dockerfile --rm .
 
 .PHONY: docker-images
 docker-images: seed-server-docker-image shoot-client-docker-image

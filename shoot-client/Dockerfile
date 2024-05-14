@@ -3,20 +3,22 @@
 # SPDX-License-Identifier: Apache-2.0
 
 ############# gobuilder
-FROM golang:1.22.3 AS gobuilder
+FROM --platform=$BUILDPLATFORM golang:1.22.3 AS gobuilder
 
 WORKDIR /build
 COPY ./VERSION ./VERSION
-COPY ./.git ./.git
-COPY ./Makefile ./Makefile
 COPY ./go.mod /go.sum ./
 RUN go mod download
+COPY ./.git ./.git
 COPY ./cmd ./cmd
 COPY ./pkg ./pkg
+COPY ./Makefile ./Makefile
 ARG TARGETARCH
-RUN make build-shoot-client GOARCH=$TARGETARCH
+ENV GOCACHE=/root/.cache/go-build
+RUN --mount=type=cache,target="/root/.cache/go-build" make build-shoot-client GOARCH=$TARGETARCH
 
-FROM cgr.dev/chainguard/wolfi-base
+FROM --platform=$TARGETPLATFORM cgr.dev/chainguard/wolfi-base
+RUN apk update
 RUN apk add openvpn iptables ip6tables
 # delete apk to ensure no additional packages can be installed
 RUN rm $(which apk)
