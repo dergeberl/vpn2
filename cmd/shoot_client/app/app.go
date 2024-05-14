@@ -237,7 +237,7 @@ func vpnConfig(log logr.Logger, cfg config) string {
 
 	if cfg.VPNServerIndex != "" {
 		vpnSeedServer = fmt.Sprintf("vpn-seed-server-%s", cfg.VPNServerIndex)
-		dev = fmt.Sprintf("tab%s", cfg.VPNServerIndex)
+		dev = fmt.Sprintf("tap%s", cfg.VPNServerIndex)
 	}
 
 	log.Info("Generate Config", "vpn-seed-sever", vpnSeedServer, "dev", dev)
