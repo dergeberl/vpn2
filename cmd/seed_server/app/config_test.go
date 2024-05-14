@@ -73,8 +73,8 @@ route 10.0.1.0 255.255.255.0
 
 			Expect(content).To(ContainSubstring(`
 script-security 2
-up "/firewall.sh on tun0"
-down "/firewall.sh off tun0"`))
+up "/bin/seed-server firewall --mode up --device tun0"
+down "/bin/seed-server firewall --mode down --device tun0"`))
 		})
 
 		It("should generate correct openvpn.config for IPv4 default values with HA", func() {
@@ -105,8 +105,8 @@ dev tap0
 
 			Expect(content).To(ContainSubstring(`
 script-security 2
-up "/firewall.sh on tap0"
-down "/firewall.sh off tap0"`))
+up "/bin/seed-server firewall --mode up --device tap0"
+down "/bin/seed-server firewall --mode down --device tap0"`))
 
 			Expect(content).To(ContainSubstring(`
 status /srv/status/openvpn.status 15
@@ -132,8 +132,8 @@ dev tun0
 `))
 			Expect(content).To(ContainSubstring(`
 script-security 2
-up "/firewall.sh on tun0"
-down "/firewall.sh off tun0"`))
+up "/bin/seed-server firewall --mode up --device tun0"
+down "/bin/seed-server firewall --mode down --device tun0"`))
 		})
 	})
 

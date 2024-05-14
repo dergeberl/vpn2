@@ -65,8 +65,8 @@ dev {{ .Device }}
 {{/* Add firewall rules to block all traffic originating from the shoot cluster.
      The scripts are run after the tun device has been created (up) or removed (down). */ -}}
 script-security 2
-up "/firewall.sh on {{ .Device }}"
-down "/firewall.sh off {{ .Device }}"
+up "/bin/seed-server firewall --mode up --device {{ .Device }}"
+down "/bin/seed-server firewall --mode down --device {{ .Device }}"
 
 {{ if not (eq .StatusPath "") -}}
 status {{ .StatusPath }} 15

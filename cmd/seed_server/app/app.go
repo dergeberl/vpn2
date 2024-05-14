@@ -64,8 +64,6 @@ func NewCommand() *cobra.Command {
 }
 
 func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error {
-	log.Info("TODO")
-
 	var cfg config
 	var err error
 
