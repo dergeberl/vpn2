@@ -63,6 +63,7 @@ type config struct {
 	IsShootClient                bool   `env:"IS_SHOOT_CLIENT"`
 	PodName                      string `env:"POD_NAME"`
 	Namespace                    string `env:"NAMESPACE"`
+	ConfigureBonding             bool   `env:"CONFIGURE_BONDING"`
 	HAVPNClients                 int    `env:"HA_VPN_CLIENTS"`
 	StartIndex                   int    `env:"START_INDEX" envDefault:"200"`
 	EndIndex                     int    `env:"END_INDEX" envDefault:"254"`
@@ -270,18 +271,21 @@ func getVpnClientIndex(cfg config) (int, error) {
 }
 
 func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error {
-	cfg := config{}
-	if err := env.Parse(&cfg); err != nil {
+	cfg, err := getConfig()
+	if err != nil {
 		return err
 	}
-	if cfg.VPNNetwork == "" {
-		if cfg.IPFamilies == "IPv4" {
-			cfg.VPNNetwork = "192.168.123.0/24"
-		} else {
-			cfg.VPNNetwork = "fd8f:6d53:b97a:1::/120"
-		}
-	}
 	log.Info("config parsed", "config", cfg)
+
+	return fmt.Errorf("not yet implemented")
+}
+
+func subcommandBonding(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error {
+	cfg, err := getConfig(log)
+	if err != nil {
+		return err
+	}
+
 	if !cfg.DoNotConfigureKernelSettings {
 		err := kernelSettings(cfg)
 		if err != nil {
@@ -294,13 +298,30 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 		return err
 	}
 
-	// todo compute
-	// vpnClientIndex := 0
-
-	err = configureBonding(ctx, cfg, vpnNetwork)
-	if err != nil {
-		return err
+	if cfg.ConfigureBonding {
+		if cfg.IPFamilies != "IPv4" {
+			return fmt.Errorf("the highly-available VPN setup is only supported for IPv4 single-stack shoots")
+		}
+		err = configureBonding(ctx, cfg, vpnNetwork)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
+}
 
-	return fmt.Errorf("not yet implemented")
+func getConfig(log logr.Logger) (config, error) {
+	cfg := config{}
+	if err := env.Parse(&cfg); err != nil {
+		return cfg, err
+	}
+	if cfg.VPNNetwork == "" {
+		if cfg.IPFamilies == "IPv4" {
+			cfg.VPNNetwork = "192.168.123.0/24"
+		} else {
+			cfg.VPNNetwork = "fd8f:6d53:b97a:1::/120"
+		}
+	}
+	log.Info("config parsed", "config", cfg)
+	return cfg, nil
 }
