@@ -28,7 +28,7 @@ func firewallCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&device, "device", "d", "", "device to configure")
-	cmd.Flags().StringVarP(&mode, "mode", "d", "", "mode of firewall (up or down)")
+	cmd.Flags().StringVarP(&mode, "mode", "m", "", "mode of firewall (up or down)")
 	cmd.MarkFlagsRequiredTogether("device", "mode")
 
 	return cmd

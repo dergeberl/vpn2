@@ -101,6 +101,8 @@ type config struct {
 	IsHA            bool
 	StatusPath      string
 	ShootNetworks   []netip.Prefix
+	HAVPNClients    int
+	LocalNodeIP     string
 }
 
 var funcs = map[string]any{"net": netFunc, "netIP": netIP, "cidrMask": cidrMask}
