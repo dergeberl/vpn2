@@ -71,19 +71,13 @@ test:
 	go test ./...
 
 .PHONY: build
-build: build-acquire-ip build-openvpn-exporter build-seed-server build-shoot-client
+build: build-acquire-ip build-seed-server build-shoot-client
 
 .PHONY: build-acquire-ip
 build-acquire-ip:
 	@CGO_ENABLED=0 GOOS=linux GOARCH=$(ARCH) GO111MODULE=on go build -o bin/acquire-ip \
 	    -ldflags $(LD_FLAGS)\
 	    ./cmd/acquire_ip/main.go
-
-.PHONY: build-openvpn-exporter
-build-openvpn-exporter:
-	@CGO_ENABLED=0 GOOS=linux GOARCH=$(ARCH) GO111MODULE=on go build -o bin/openvpn-exporter  \
-	    -ldflags $(LD_FLAGS)\
-	    ./cmd/openvpn_exporter/main.go
 
 .PHONY: build-seed-server
 build-seed-server:

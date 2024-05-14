@@ -16,6 +16,7 @@ import (
 	"strconv"
 
 	"github.com/caarlos0/env/v10"
+	"github.com/gardener/vpn2/cmd/seed_server/app/openvpn_exporter"
 	"github.com/gardener/vpn2/pkg/utils"
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
@@ -33,6 +34,7 @@ const (
 	openvpnConfigFile         = "/openvpn.config"
 	openvpnClientConfigDir    = "/client-config-dir"
 	openvpnClientConfigPrefix = "vpn-shoot-client"
+	metricsPort               = 15000
 )
 
 type Environment struct {
@@ -183,7 +185,7 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 			if err != nil {
 				return fmt.Errorf("error %w: Could not generate ha shoot client config %d from %v", err, i, cfg)
 			}
-			if err := os.WriteFile(fmt.Sprintf("%s%s-%d", path.Join(openvpnClientConfigDir, openvpnClientConfigPrefix), i), []byte(vpnShootClientConfigHA), 0o644); err != nil {
+			if err := os.WriteFile(fmt.Sprintf("%s-%d", path.Join(openvpnClientConfigDir, openvpnClientConfigPrefix), i), []byte(vpnShootClientConfigHA), 0o644); err != nil {
 				return err
 			}
 		}
@@ -192,6 +194,15 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 	filterRegex, err := regexp.Compile(fmt.Sprintf(`(TCP connection established with \[AF_INET(6)?\]%s|)?%s(:[0-9]{1,5})? Connection reset, restarting`, e.LocalNodeIP, e.LocalNodeIP))
 	if err != nil {
 		return err
+	}
+
+	if e.StatusPath != "" {
+		exporterConfig := openvpn_exporter.NewDefaultConfig()
+		exporterConfig.OpenvpnStatusPaths = e.StatusPath
+		exporterConfig.ListenAddress = fmt.Sprintf(":%d", metricsPort)
+		if err := openvpn_exporter.Start(log, exporterConfig); err != nil {
+			return fmt.Errorf("starting metrics exporter failed: %w", err)
+		}
 	}
 
 	openvpnCommand := exec.CommandContext(ctx, "openvpn", "--config", openvpnConfigFile)
@@ -211,8 +222,8 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 	for scanner.Scan() {
 		line := scanner.Bytes()
 		if !filterRegex.Match(line) {
-			os.Stdout.Write(line)
-			os.Stdout.Write([]byte("\n"))
+			_, _ = os.Stdout.Write(line)
+			_, _ = os.Stdout.Write([]byte("\n"))
 		}
 	}
 	if err := scanner.Err(); err != nil {
