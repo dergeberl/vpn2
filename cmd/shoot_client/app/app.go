@@ -16,7 +16,9 @@ import (
 
 	"github.com/caarlos0/env/v10"
 	"github.com/cilium/cilium/pkg/sysctl"
+	"github.com/gardener/vpn2/cmd/shoot_client/app/pathcontroller"
 	"github.com/gardener/vpn2/pkg/ippool"
+	"github.com/gardener/vpn2/pkg/network"
 	"github.com/gardener/vpn2/pkg/utils"
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
@@ -45,7 +47,7 @@ func NewCommand() *cobra.Command {
 
 	flags := cmd.Flags()
 	verflag.AddFlags(flags)
-
+	cmd.AddCommand(pathcontroller.NewCommand())
 	return cmd
 }
 
@@ -67,27 +69,6 @@ type config struct {
 	PodLabelSelector             string `env:"POD_LABEL_SELECTOR" envDefault:"app=kubernetes,role=apiserver"`
 	WaitSeconds                  int    `env:"WAIT_SECONDS" envDefault:"2"`
 	DoNotConfigureKernelSettings bool   `env:"$DO_NOT_CONFIGURE_KERNEL_SETTINGS" envDefault:"false"`
-}
-
-func getCIDR(networkCIDR string, ipFamily string) (*net.IPNet, error) {
-	_, cidr, err := net.ParseCIDR(networkCIDR)
-	if err != nil {
-		return nil, err
-	}
-	length, _ := cidr.Mask.Size()
-	switch ipFamily {
-	case "IPv4":
-		if length != 24 {
-			return nil, fmt.Errorf("ipv4 setup needs vpn network to have /24 subnet mask, got %d", length)
-		}
-	case "IPv6":
-		if length != 120 {
-			return nil, fmt.Errorf("ipv6 setup needs vpn network to have /120 subnet mask, got %d", length)
-		}
-	default:
-		return nil, fmt.Errorf("unknown ipFamily: %s", ipFamily)
-	}
-	return cidr, nil
 }
 
 // please change this name omg
@@ -298,7 +279,6 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 		}
 	}
 	log.Info("config parsed", "config", cfg)
-
 	if !cfg.DoNotConfigureKernelSettings {
 		err := kernelSettings(cfg)
 		if err != nil {
@@ -306,7 +286,7 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 		}
 	}
 
-	vpnNetwork, err := getCIDR(cfg.VPNNetwork, cfg.IPFamilies)
+	vpnNetwork, err := network.ValidateCIDR(cfg.VPNNetwork, cfg.IPFamilies)
 	if err != nil {
 		return err
 	}
