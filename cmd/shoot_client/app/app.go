@@ -75,15 +75,14 @@ type config struct {
 func computeShootAddrAndTargets(vpnNetwork *net.IPNet, vpnClientIndex int) (*net.IPNet, []net.IP) {
 	_, addrLen := vpnNetwork.Mask.Size()
 
-	newIP := slices.Clone(vpnNetwork.IP.To4())
-	newIP[3] = byte(bondStart + 2 + vpnClientIndex)
+	clientIP := clientIP(vpnNetwork, vpnClientIndex)
 
 	shootSubnet := &net.IPNet{
-		IP:   newIP,
+		IP:   clientIP,
 		Mask: net.CIDRMask(bondBits, addrLen),
 	}
 
-	target := slices.Clone(newIP)
+	target := slices.Clone(clientIP)
 	target[3] = byte(bondStart + 1)
 
 	return shootSubnet, append([]net.IP{}, target)
@@ -98,11 +97,15 @@ func computeSeedTargetAndAddr(acquiredIP net.IP, vpnNetwork *net.IPNet, haVPNCli
 
 	targets := make([]net.IP, 0, haVPNClients)
 	for i := range haVPNClients {
-		targetIP := slices.Clone(vpnNetwork.IP.To4())
-		targetIP[3] = byte(bondStart + i + 2)
-		targets = append(targets, targetIP)
+		targets = append(targets, clientIP(vpnNetwork, i))
 	}
 	return subnet, targets
+}
+
+func clientIP(vpnNetwork *net.IPNet, index int) net.IP {
+	newIP := slices.Clone(vpnNetwork.IP.To4())
+	newIP[3] = byte(bondStart + 2 + index)
+	return newIP
 }
 
 const (
