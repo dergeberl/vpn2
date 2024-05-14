@@ -107,7 +107,7 @@ func configureBonding(ctx context.Context, log logr.Logger, cfg config, vpnNetwo
 	var addr *net.IPNet
 	var targets []net.IP
 	if cfg.IsShootClient {
-		addr, targets = computeShootAddrAndTargets(vpnNetwork, cfg.VPNClientIndex)
+		addr, targets = network.ComputeShootAddrAndTargets(vpnNetwork, cfg.VPNClientIndex)
 	} else {
 		broker, err := newIPAddressBrokerFromEnv(&cfg, vpnNetwork)
 		if err != nil {
@@ -122,7 +122,7 @@ func configureBonding(ctx context.Context, log logr.Logger, cfg config, vpnNetwo
 		if ip == nil {
 			return fmt.Errorf("acquired ip %s is not a valid ipv6 nor ipv4", ip)
 		}
-		addr, targets = computeSeedTargetAndAddr(ip, vpnNetwork, cfg.HAVPNClients)
+		addr, targets = network.ComputeSeedAddrAndTargets(ip, vpnNetwork, cfg.HAVPNClients)
 	}
 
 	// check if bond0 already exists and delete it if exists
