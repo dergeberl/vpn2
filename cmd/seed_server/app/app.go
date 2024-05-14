@@ -11,6 +11,7 @@ import (
 	"net/netip"
 	"os"
 	"os/exec"
+	"path"
 	"regexp"
 	"strconv"
 
@@ -170,7 +171,7 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 	if err != nil {
 		return fmt.Errorf("error %w: Could not generate shoot client config from %v", err, cfg)
 	}
-	if err := os.WriteFile(openvpnClientConfigDir+openvpnClientConfigPrefix, []byte(vpnShootClientConfig), 0o644); err != nil {
+	if err := os.WriteFile(path.Join(openvpnClientConfigDir, openvpnClientConfigPrefix), []byte(vpnShootClientConfig), 0o644); err != nil {
 		return err
 	}
 
@@ -182,7 +183,7 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 			if err != nil {
 				return fmt.Errorf("error %w: Could not generate ha shoot client config %d from %v", err, i, cfg)
 			}
-			if err := os.WriteFile(fmt.Sprintf("%s%s-%d", openvpnClientConfigDir, openvpnClientConfigPrefix, i), []byte(vpnShootClientConfigHA), 0o644); err != nil {
+			if err := os.WriteFile(fmt.Sprintf("%s%s-%d", path.Join(openvpnClientConfigDir, openvpnClientConfigPrefix), i), []byte(vpnShootClientConfigHA), 0o644); err != nil {
 				return err
 			}
 		}
