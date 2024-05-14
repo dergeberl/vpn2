@@ -88,7 +88,7 @@ func Test_computeShootTargetAndAddr(t *testing.T) {
 	for _, testcase := range tt {
 		t.Run(testcase.name, func(t *testing.T) {
 
-			subnet, target := computeShootTargetAndAddr(&testcase.vpnNetwork, 0)
+			subnet, target := computeShootAddrAndTargets(&testcase.vpnNetwork, 0)
 			if !target.Equal(testcase.want.target) {
 				t.Errorf("want: %+v, got: %+v", testcase.want.target, *target)
 			}
