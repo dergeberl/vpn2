@@ -35,7 +35,7 @@ dh none
 auth SHA256
 tls-auth "/srv/secrets/tlsauth/vpn.tlsauth" 0
 
-{{- if (eq .IPFamilies "IPv4") }}
+{{- if (eq .Env.IPFamilies "IPv4") }}
 proto tcp4-server
 server {{ netIP .OpenVPNNetwork }} {{ cidrMask .OpenVPNNetwork }} nopool
 ifconfig-pool {{ .IPv4PoolStartIP }} {{ .IPv4PoolEndIP }}
@@ -45,7 +45,7 @@ route {{ netIP . }} {{ cidrMask . }}
 {{- end }}
 {{- end }}
 
-{{- if (eq .IPFamilies "IPv6") }}
+{{- if (eq .Env.IPFamilies "IPv6") }}
 proto tcp6-server
 server-ipv6 {{ net .OpenVPNNetwork }}
 
@@ -68,20 +68,20 @@ script-security 2
 up "/bin/seed-server firewall --mode up --device {{ .Device }}"
 down "/bin/seed-server firewall --mode down --device {{ .Device }}"
 
-{{ if not (eq .StatusPath "") -}}
-status {{ .StatusPath }} 15
+{{ if not (eq .Env.StatusPath "") -}}
+status {{ .Env.StatusPath }} 15
 status-version 2
 {{- end -}}
 `
 
 var vpnShootClientTemplate = `
-{{- if (eq .IPFamilies  "IPv4") }}
+{{- if (eq .Env.IPFamilies  "IPv4") }}
 {{- range .ShootNetworks }}
 iroute {{ netIP . }} {{ cidrMask . }}
 {{- end }}
 {{- end }}
 
-{{- if (eq .IPFamilies "IPv6") }}
+{{- if (eq .Env.IPFamilies "IPv6") }}
 {{- range .ShootNetworks }}
 iroute-ipv6 {{ net . }}
 {{- end }}
@@ -94,15 +94,12 @@ ifconfig-push {{ .StartIP }} {{ cidrMask .OpenVPNNetwork }}
 
 type config struct {
 	Device          string
-	IPFamilies      string
 	IPv4PoolStartIP string
 	IPv4PoolEndIP   string
 	OpenVPNNetwork  netip.Prefix
 	IsHA            bool
-	StatusPath      string
 	ShootNetworks   []netip.Prefix
-	HAVPNClients    int
-	LocalNodeIP     string
+	Env             Environment
 }
 
 var funcs = map[string]any{"net": netFunc, "netIP": netIP, "cidrMask": cidrMask}

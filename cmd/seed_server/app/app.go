@@ -8,13 +8,13 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"net"
 	"net/netip"
 	"os"
 	"os/exec"
 	"regexp"
 	"strconv"
 
+	"github.com/caarlos0/env/v10"
 	"github.com/gardener/vpn2/pkg/utils"
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
@@ -27,18 +27,24 @@ const Name = "seed-server"
 const (
 	ipV4Family                = "IPv4"
 	ipV6Family                = "IPv6"
-	baseConfigDir             = "/init-config"
-	defaultIPFamilies         = ipV4Family
-	defaultServiceNetwork     = "100.64.0.0/13"
-	defaultPodNetwork         = "100.96.0.0/11"
-	defaultNodeNetwork        = ""
 	defaultIPV4VpnNetwork     = "192.168.123.0/24"
 	defaultIPV6VpnNetwork     = "fd8f:6d53:b97a:1::/120"
-	defaultLocalNodeIP        = "255.255.255.255"
 	openvpnConfigFile         = "/openvpn.config"
 	openvpnClientConfigDir    = "/client-config-dir"
 	openvpnClientConfigPrefix = "vpn-shoot-client"
 )
+
+type Environment struct {
+	IPFamilies     string `env:"IP_FAMILIES" envDefault:"IPv4"`
+	ServiceNetwork string `env:"SERVICE_NETWORK" envDefault:"100.64.0.0/13"`
+	PodNetwork     string `env:"POD_NETWORK" envDefault:"100.96.0.0/11"`
+	NodeNetwork    string `env:"NODE_NETWORK"`
+	VPNNetwork     string `env:"VPN_NETWORK"`
+	PodName        string `env:"POD_NAME"`
+	StatusPath     string `env:"OPENVPN_STATUS_PATH"`
+	HAVPNClients   int    `env:"HA_VPN_CLIENTS"`
+	LocalNodeIP    string `env:"LOCAL_NODE_IP" envDefault:"255.255.255.255"`
+}
 
 // NewCommand creates a new cobra.Command for running gardener-node-agent.
 func NewCommand() *cobra.Command {
@@ -64,35 +70,33 @@ func NewCommand() *cobra.Command {
 }
 
 func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error {
-	var cfg config
-	var err error
+	e, err := getEnvironment(log)
+	if err != nil {
+		return fmt.Errorf("could not parse environment")
+	}
+	cfg := config{
+		Env: e,
+	}
 
-	cfg.IPFamilies = getConfigString("IP_FAMILIES", "", defaultIPFamilies)
-
-	serviceNetwork := getConfigString("SERVICE_NETWORK", baseConfigDir+"/serviceNetwork", defaultServiceNetwork)
-	sn, err := getIPNet(serviceNetwork, "SERVICE_NETWORK")
+	sn, err := getIPNet(e.ServiceNetwork, "SERVICE_NETWORK")
 	if err != nil {
 		return err
 	}
 	cfg.ShootNetworks = append(cfg.ShootNetworks, sn)
 
-	podNetwork := getConfigString("POD_NETWORK", baseConfigDir+"/podNetwork", defaultPodNetwork)
-	pn, err := getIPNet(podNetwork, "POD_NETWORK")
+	pn, err := getIPNet(e.PodNetwork, "POD_NETWORK")
 	if err != nil {
 		return err
 	}
 	cfg.ShootNetworks = append(cfg.ShootNetworks, pn)
 
-	nodeNetwork := getConfigString("NODE_NETWORK", baseConfigDir+"/nodeNetwork", defaultNodeNetwork)
-	if nodeNetwork != "" {
-		nn, err := getIPNet(nodeNetwork, "NODE_NETWORK")
+	if e.NodeNetwork != "" {
+		nn, err := getIPNet(e.NodeNetwork, "NODE_NETWORK")
 		if err != nil {
 			return err
 		}
 		cfg.ShootNetworks = append(cfg.ShootNetworks, nn)
 	}
-
-	vpnNetwork := getConfigString("VPN_NETWORK", baseConfigDir+"/vpnNetwork", "")
 
 	isHA, vpnIndex := getHAInfo()
 
@@ -104,22 +108,17 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 	}
 	cfg.IsHA = isHA
 
-	cfg.StatusPath = os.Getenv("OPENVPN_STATUS_PATH")
-
-	switch cfg.IPFamilies {
+	switch e.IPFamilies {
 	case ipV4Family:
-		if vpnNetwork == "" {
-			vpnNetwork = defaultIPV4VpnNetwork
-		}
-		vpnNetworkPrefix, err := netip.ParsePrefix(vpnNetwork)
+		vpnNetworkPrefix, err := netip.ParsePrefix(e.VPNNetwork)
 		if err != nil {
-			return fmt.Errorf("vpn network prefix is not a valid prefix, vpn network: %s", vpnNetwork)
+			return fmt.Errorf("vpn network prefix is not a valid prefix, vpn network: %s", e.VPNNetwork)
 		}
 		if !vpnNetworkPrefix.Addr().Is4() {
 			return fmt.Errorf("vpn network prefix is not v4 although v4 address family was specified")
 		}
 		if vpnNetworkPrefix.Bits() != 24 {
-			return fmt.Errorf("invalid prefixlength of vpn network prefix, must be /24, vpn network: %s", vpnNetwork)
+			return fmt.Errorf("invalid prefixlength of vpn network prefix, must be /24, vpn network: %s", e.VPNNetwork)
 		}
 		vpnNetworkPrefixBytes := vpnNetworkPrefix.Addr().As4()
 		switch isHA {
@@ -139,18 +138,15 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 		}
 
 	case ipV6Family:
-		if vpnNetwork == "" {
-			vpnNetwork = defaultIPV6VpnNetwork
-		}
-		vpnNetworkPrefix, err := netip.ParsePrefix(vpnNetwork)
+		vpnNetworkPrefix, err := netip.ParsePrefix(e.VPNNetwork)
 		if err != nil {
-			return fmt.Errorf("vpn network prefix is not a valid prefix, vpn network: %s", vpnNetwork)
+			return fmt.Errorf("vpn network prefix is not a valid prefix, vpn network: %s", e.VPNNetwork)
 		}
 		if !vpnNetworkPrefix.Addr().Is6() {
 			return fmt.Errorf("vpn network prefix is not v6 although v6 address family was specified")
 		}
 		if vpnNetworkPrefix.Bits() != 120 {
-			return fmt.Errorf("invalid prefixlength of vpn network prefix, must be /120, vpn network: %s", vpnNetwork)
+			return fmt.Errorf("invalid prefixlength of vpn network prefix, must be /120, vpn network: %s", e.VPNNetwork)
 		}
 		if isHA {
 			return fmt.Errorf("error: the highly-available VPN setup is only supported for IPv4 single-stack shoots but IPv6 address family was specified")
@@ -158,7 +154,7 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 		cfg.OpenVPNNetwork = vpnNetworkPrefix
 
 	default:
-		return fmt.Errorf("no valid IP address family, ip address family: %s", cfg.IPFamilies)
+		return fmt.Errorf("no valid IP address family, ip address family: %s", e.IPFamilies)
 	}
 	log.Info("using openvpn network", "openVPNNetwork", cfg.OpenVPNNetwork)
 
@@ -178,9 +174,8 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 		return err
 	}
 
-	cfg.HAVPNClients, _ = strconv.Atoi(os.Getenv("HA_VPN_CLIENTS"))
 	if cfg.IsHA {
-		for i := 0; i < cfg.HAVPNClients; i++ {
+		for i := 0; i < e.HAVPNClients; i++ {
 			startIP := cfg.OpenVPNNetwork.Addr().As4()
 			startIP[3] = byte(vpnIndex*64 + i + 2)
 			vpnShootClientConfigHA, err := GenerateVPNShootClientHA(cfg, netip.AddrFrom4(startIP).String())
@@ -193,25 +188,20 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 		}
 	}
 
-	cfg.LocalNodeIP = os.Getenv("LOCAL_NODE_IP")
-	if cfg.LocalNodeIP == "" {
-		cfg.LocalNodeIP = defaultLocalNodeIP
-	}
-
-	filterRegex, err := regexp.Compile(fmt.Sprintf(`(TCP connection established with \[AF_INET(6)?\]%s|)?%s(:[0-9]{1,5})? Connection reset, restarting`, cfg.LocalNodeIP, cfg.LocalNodeIP))
+	filterRegex, err := regexp.Compile(fmt.Sprintf(`(TCP connection established with \[AF_INET(6)?\]%s|)?%s(:[0-9]{1,5})? Connection reset, restarting`, e.LocalNodeIP, e.LocalNodeIP))
 	if err != nil {
 		return err
 	}
 
-	openvpnCommand := exec.Command("openvpn", "--config", openvpnConfigFile)
+	openvpnCommand := exec.CommandContext(ctx, "openvpn", "--config", openvpnConfigFile)
 	openvpnStdout, err := openvpnCommand.StdoutPipe()
 	if err != nil {
-		return fmt.Errorf("Could not connect to stdout of openvpn command")
+		return fmt.Errorf("could not connect to stdout of openvpn command")
 	}
 
 	err = openvpnCommand.Start()
 	if err != nil {
-		return fmt.Errorf("Could not start openvpn command, %w", err)
+		return fmt.Errorf("could not start openvpn command, %w", err)
 	}
 	defer openvpnCommand.Wait()
 
@@ -231,22 +221,6 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 	return nil
 }
 
-func getConfigString(key, filename, fallback string) string {
-	result, defined := os.LookupEnv(key)
-	if defined {
-		return result
-	}
-
-	if filename != "" {
-		sn, _ := os.ReadFile(filename)
-		if sn != nil {
-			return string(sn)
-		}
-	}
-
-	return fallback
-}
-
 func getHAInfo() (bool, int) {
 	podName, ok := os.LookupEnv("POD_NAME")
 	if !ok {
@@ -262,14 +236,27 @@ func getHAInfo() (bool, int) {
 	return false, 0
 }
 
-func netmaskFromPrefixBits(bits, prefixlen int) string {
-	return net.CIDRMask(bits, prefixlen).String()
-}
-
 func getIPNet(cidr, name string) (netip.Prefix, error) {
 	ipnet, err := netip.ParsePrefix(cidr)
 	if err != nil {
 		return netip.Prefix{}, fmt.Errorf("environment variable %s does not contain a valid cidr: %s", name, cidr)
 	}
 	return ipnet, nil
+}
+
+func getEnvironment(log logr.Logger) (Environment, error) {
+	e := Environment{}
+	if err := env.Parse(&e); err != nil {
+		return e, err
+	}
+	if e.VPNNetwork == "" {
+		switch e.IPFamilies {
+		case ipV4Family:
+			e.VPNNetwork = defaultIPV4VpnNetwork
+		case ipV6Family:
+			e.VPNNetwork = defaultIPV6VpnNetwork
+		}
+	}
+	log.Info("environment parsed", "environment", e)
+	return e, nil
 }

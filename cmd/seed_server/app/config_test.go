@@ -18,35 +18,37 @@ var _ = Describe("#Config", func() {
 			cfgIPv4.OpenVPNNetwork = parseIPNet("192.168.123.0/26")
 			cfgIPv4.IPv4PoolStartIP = "192.168.123.8"
 			cfgIPv4.IPv4PoolEndIP = "192.168.123.62"
-			cfgIPv4.StatusPath = "/srv/status/openvpn.status"
+			cfgIPv4.Env.StatusPath = "/srv/status/openvpn.status"
 		}
 	)
 
 	BeforeEach(func() {
 		cfgIPv4 = config{
 			Device:          "tun0",
-			IPFamilies:      "IPv4",
 			IPv4PoolStartIP: "192.168.123.10",
 			IPv4PoolEndIP:   "192.168.123.254",
 			OpenVPNNetwork:  parseIPNet("192.168.123.0/24"),
 			IsHA:            false,
-			StatusPath:      "",
 			ShootNetworks: []netip.Prefix{
 				parseIPNet("100.64.0.0/13"),
 				parseIPNet("100.96.0.0/11"),
 				parseIPNet("10.0.1.0/24"),
 			},
+			Env: Environment{
+				IPFamilies: "IPv4",
+			},
 		}
 		cfgIPv6 = config{
 			Device:         "tun0",
-			IPFamilies:     "IPv6",
 			OpenVPNNetwork: parseIPNet("2001:db8:10::/48"),
 			IsHA:           false,
-			StatusPath:     "",
 			ShootNetworks: []netip.Prefix{
 				parseIPNet("2001:db8:1::/48"),
 				parseIPNet("2001:db8:2::/48"),
 				parseIPNet("2001:db8:3::/48"),
+			},
+			Env: Environment{
+				IPFamilies: "IPv6",
 			},
 		}
 	})
