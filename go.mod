@@ -7,6 +7,7 @@ toolchain go1.22.3
 require (
 	github.com/caarlos0/env/v10 v10.0.0
 	github.com/cilium/cilium v1.15.4
+	github.com/coreos/go-iptables v0.7.0
 	github.com/gardener/gardener v1.94.1
 	github.com/go-logr/logr v1.4.1
 	github.com/kumina/openvpn_exporter v0.3.0
