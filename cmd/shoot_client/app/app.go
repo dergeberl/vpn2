@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net"
 	"os/exec"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -71,48 +70,6 @@ type config struct {
 	WaitSeconds                  int    `env:"WAIT_SECONDS" envDefault:"2"`
 	DoNotConfigureKernelSettings bool   `env:"$DO_NOT_CONFIGURE_KERNEL_SETTINGS" envDefault:"false"`
 }
-
-// please change this name omg
-func computeShootAddrAndTargets(vpnNetwork *net.IPNet, vpnClientIndex int) (*net.IPNet, []net.IP) {
-	_, addrLen := vpnNetwork.Mask.Size()
-
-	clientIP := clientIP(vpnNetwork, vpnClientIndex)
-
-	shootSubnet := &net.IPNet{
-		IP:   clientIP,
-		Mask: net.CIDRMask(bondBits, addrLen),
-	}
-
-	target := slices.Clone(clientIP)
-	target[3] = byte(bondStart + 1)
-
-	return shootSubnet, append([]net.IP{}, target)
-}
-
-// please change this name omg
-func computeSeedTargetAndAddr(acquiredIP net.IP, vpnNetwork *net.IPNet, haVPNClients int) (*net.IPNet, []net.IP) {
-	subnet := &net.IPNet{
-		IP:   acquiredIP,
-		Mask: net.CIDRMask(bondBits, 32),
-	}
-
-	targets := make([]net.IP, 0, haVPNClients)
-	for i := range haVPNClients {
-		targets = append(targets, clientIP(vpnNetwork, i))
-	}
-	return subnet, targets
-}
-
-func clientIP(vpnNetwork *net.IPNet, index int) net.IP {
-	newIP := slices.Clone(vpnNetwork.IP.To4())
-	newIP[3] = byte(bondStart + 2 + index)
-	return newIP
-}
-
-const (
-	bondBits  = 26
-	bondStart = 192
-)
 
 // TODO: change this to use the config
 //

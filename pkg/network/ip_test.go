@@ -1,4 +1,4 @@
-package app
+package network
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func Test_computeShootTargetAndAddr(t *testing.T) {
+func Test_ComputeShootTargetAndAddr(t *testing.T) {
 	type want struct {
 		subnet net.IPNet
 		target net.IP
@@ -35,10 +35,12 @@ func Test_computeShootTargetAndAddr(t *testing.T) {
 	}
 	for _, testcase := range tt {
 		t.Run(testcase.name, func(t *testing.T) {
-
-			subnet, target := computeShootAddrAndTargets(&testcase.vpnNetwork, 0)
-			if !target.Equal(testcase.want.target) {
-				t.Errorf("want: %+v, got: %+v", testcase.want.target, *target)
+			subnet, targets := ComputeShootAddrAndTargets(&testcase.vpnNetwork, 0)
+			if len(targets) != 1 {
+				t.Errorf("target length is not 1, got: %d", len(targets))
+			}
+			if !targets[0].Equal(testcase.want.target) {
+				t.Errorf("unequal target: want: %+v, got: %+v", testcase.want.target, targets[0])
 			}
 
 			if !bytes.Equal(subnet.Mask, testcase.want.subnet.Mask) {
@@ -52,7 +54,7 @@ func Test_computeShootTargetAndAddr(t *testing.T) {
 	}
 }
 
-func Test_computeSeedTargetAndAddr(t *testing.T) {
+func Test_ComputeSeedTargetAndAddr(t *testing.T) {
 	type want struct {
 		subnet  net.IPNet
 		targets []net.IP
@@ -88,7 +90,7 @@ func Test_computeSeedTargetAndAddr(t *testing.T) {
 	}
 	for _, testcase := range tt {
 		t.Run(testcase.name, func(t *testing.T) {
-			subnet, targets := computeSeedTargetAndAddr(testcase.acquiredIP, &testcase.vpnNetwork, testcase.haVPNClients)
+			subnet, targets := ComputeSeedAddrAndTargets(testcase.acquiredIP, &testcase.vpnNetwork, testcase.haVPNClients)
 			for i, target := range targets {
 				if !target.Equal(testcase.want.targets[i]) {
 					t.Errorf("unequal targets at index %d: want: %+v, got: %+v", i, testcase.want.targets[i], target)
