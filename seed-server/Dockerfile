@@ -22,4 +22,5 @@ RUN apk add openvpn ip6tables iptables
 RUN rm $(which apk)
 RUN rm -r /var/cache/apk
 COPY --from=gobuilder /build/bin/openvpn-exporter /build/bin/seed-server /bin/
+RUN mkdir -p ./client-config-dir
 ENTRYPOINT [ "/bin/seed-server" ]
