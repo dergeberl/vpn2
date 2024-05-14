@@ -18,7 +18,6 @@ import (
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
-	"golang.org/x/sys/unix"
 )
 
 const Name = "path-controller"
@@ -85,7 +84,7 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 	pingRouter := &PingRouter{
 		checkedNet: (*net.IPNet)(&checkNetwork),
 		goodIPs:    make(map[string]struct{}),
-		current:    net.IP{},
+		log:        log.WithName("pingRouter"),
 	}
 
 	// acquired ip is not neccessary here, because we don't care about the subnet
@@ -99,7 +98,6 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 			pingRouter.pingAllShootClients(clientIPs)
 			_, ok := pingRouter.goodIPs[pingRouter.current.String()]
 			if !ok {
-				// TODO update routing and select new Shoot Client
 				newIP, err := pingRouter.selectNewShootClient()
 				if err != nil {
 					return err
@@ -159,6 +157,7 @@ func (p *PingRouter) selectNewShootClient() (net.IP, error) {
 type PingRouter struct {
 	cfg config
 
+	log        logr.Logger
 	checkedNet *net.IPNet
 	current    net.IP
 	mu         sync.Mutex
@@ -168,8 +167,10 @@ type PingRouter struct {
 func (p *PingRouter) pingAllShootClients(clients []net.IP) {
 	var wg sync.WaitGroup
 	for _, client := range clients {
+		p.log.Info("pinging", "client ip", client)
 		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			err := pingClient(client)
 			p.mu.Lock()
 			defer p.mu.Unlock()
@@ -183,6 +184,22 @@ func (p *PingRouter) pingAllShootClients(clients []net.IP) {
 	wg.Wait()
 }
 
+// TODO: check if this code is neccessary
+//
+//	func (p *PingRouter) updateCurrentVPNIP() error {
+//		filter := &netlink.Route{
+//			Dst: p.checkedNet,
+//		}
+//		routes, err := netlink.RouteListFiltered(unix.AF_INET, filter, 0)
+//		if err != nil {
+//			return err
+//		}
+//		if len(routes) < 1 {
+//			return fmt.Errorf("no route matched network %s", p.checkedNet)
+//		}
+//		p.current = routes[0].Src
+//		return nil
+//	}
 const protocolICMP = 1
 
 func pingClient(client net.IP) error {
@@ -228,19 +245,4 @@ func pingClient(client net.IP) error {
 	default:
 		return err
 	}
-}
-
-func (p *PingRouter) currentVPNIP() error {
-	filter := &netlink.Route{
-		Dst: p.checkedNet,
-	}
-	routes, err := netlink.RouteListFiltered(unix.AF_INET, filter, 0)
-	if err != nil {
-		return err
-	}
-	if len(routes) < 1 {
-		return fmt.Errorf("no route matched network %s", p.checkedNet)
-	}
-	p.current = routes[0].Src
-	return nil
 }

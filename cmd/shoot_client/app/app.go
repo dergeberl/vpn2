@@ -17,6 +17,7 @@ import (
 	"github.com/caarlos0/env/v10"
 	"github.com/cilium/cilium/pkg/sysctl"
 	"github.com/coreos/go-iptables/iptables"
+	"github.com/gardener/vpn2/cmd/shoot_client/app/pathcontroller"
 	"github.com/gardener/vpn2/pkg/ippool"
 	"github.com/gardener/vpn2/pkg/network"
 	"github.com/gardener/vpn2/pkg/utils"
@@ -47,7 +48,7 @@ func NewCommand() *cobra.Command {
 
 	flags := cmd.Flags()
 	verflag.AddFlags(flags)
-	//cmd.AddCommand(pathcontroller.NewCommand())
+	cmd.AddCommand(pathcontroller.NewCommand())
 	return cmd
 }
 
