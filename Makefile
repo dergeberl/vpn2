@@ -33,8 +33,19 @@ seed-server-docker-image:
 shoot-client-docker-image:
 	@docker build --platform=linux/$(ARCH) -t $(SHOOT_CLIENT_IMAGE_REPOSITORY):$(SHOOT_CLIENT_IMAGE_TAG) -f shoot-client/Dockerfile --rm .
 
+.PHONY: seed-server-to-gardener-local
+seed-server-to-gardener-local: seed-server-docker-image
+	@kind --name gardener-local load docker-image $(SEED_SERVER_IMAGE_REPOSITORY):$(SEED_SERVER_IMAGE_TAG)
+
+.PHONY: shoot-client-to-gardener-local
+shoot-client-to-gardener-local: shoot-client-docker-image
+	@kind --name gardener-local load docker-image $(SHOOT_CLIENT_IMAGE_REPOSITORY):$(SHOOT_CLIENT_IMAGE_TAG)
+
 .PHONY: docker-images
 docker-images: seed-server-docker-image shoot-client-docker-image
+
+.PHONY: docker-images-to-gardener-local
+docker-images-to-gardener-local: seed-server-to-gardener-local shoot-client-to-gardener-local
 
 .PHONY: release
 release: docker-images docker-login docker-push
