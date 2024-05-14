@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"net"
+	"net/netip"
 	"text/template"
 )
 
@@ -96,10 +97,10 @@ type config struct {
 	IPFamilies      string
 	IPv4PoolStartIP string
 	IPv4PoolEndIP   string
-	OpenVPNNetwork  net.IPNet
+	OpenVPNNetwork  netip.Prefix
 	IsHA            bool
 	StatusPath      string
-	ShootNetworks   []net.IPNet
+	ShootNetworks   []netip.Prefix
 }
 
 var funcs = map[string]any{"net": netFunc, "netIP": netIP, "cidrMask": cidrMask}
@@ -146,15 +147,15 @@ func GenerateVPNShootClientHA(cfg config, startIP string) (string, error) {
 	return buf.String(), nil
 }
 
-func netFunc(n net.IPNet) string {
+func netFunc(n netip.Prefix) string {
 	return n.String()
 }
 
-func netIP(n net.IPNet) string {
-	return n.IP.String()
+func netIP(n netip.Prefix) string {
+	return n.Addr().String()
 }
 
-func cidrMask(ipnet net.IPNet) string {
-	mask := net.CIDRMask(ipnet.Mask.Size())
+func cidrMask(n netip.Prefix) string {
+	mask := net.CIDRMask(n.Bits(), 32)
 	return net.IPv4(255, 255, 255, 255).Mask(mask).String()
 }

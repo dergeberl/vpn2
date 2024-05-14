@@ -1,7 +1,7 @@
 package app
 
 import (
-	"net"
+	"net/netip"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -31,7 +31,7 @@ var _ = Describe("#Config", func() {
 			OpenVPNNetwork:  parseIPNet("192.168.123.0/24"),
 			IsHA:            false,
 			StatusPath:      "",
-			ShootNetworks: []net.IPNet{
+			ShootNetworks: []netip.Prefix{
 				parseIPNet("100.64.0.0/13"),
 				parseIPNet("100.96.0.0/11"),
 				parseIPNet("10.0.1.0/24"),
@@ -43,7 +43,7 @@ var _ = Describe("#Config", func() {
 			OpenVPNNetwork: parseIPNet("2001:db8:10::/48"),
 			IsHA:           false,
 			StatusPath:     "",
-			ShootNetworks: []net.IPNet{
+			ShootNetworks: []netip.Prefix{
 				parseIPNet("2001:db8:1::/48"),
 				parseIPNet("2001:db8:2::/48"),
 				parseIPNet("2001:db8:3::/48"),
@@ -186,10 +186,10 @@ ifconfig-push 192.168.123.2 255.255.255.192
 	})
 })
 
-func parseIPNet(cidr string) net.IPNet {
-	_, ipnet, err := net.ParseCIDR(cidr)
+func parseIPNet(cidr string) netip.Prefix {
+	prefix, err := netip.ParsePrefix(cidr)
 	if err != nil {
 		panic(err)
 	}
-	return *ipnet
+	return prefix
 }
