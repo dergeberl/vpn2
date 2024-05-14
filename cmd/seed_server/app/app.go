@@ -52,6 +52,7 @@ func NewCommand() *cobra.Command {
 
 	flags := cmd.Flags()
 	verflag.AddFlags(flags)
+	cmd.AddCommand(firewallCommand())
 
 	return cmd
 }
