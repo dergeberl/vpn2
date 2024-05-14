@@ -39,9 +39,7 @@ proto tcp4-server
 server {{ netIP .OpenVPNNetwork }} {{ cidrMask .OpenVPNNetwork }} nopool
 ifconfig-pool {{ .IPv4PoolStartIP }} {{ .IPv4PoolEndIP }}
 
-route {{ netIP .ServiceNetwork }} {{ cidrMask .ServiceNetwork }}
-route {{ netIP .PodNetwork }} {{ cidrMask .PodNetwork }}
-{{- range .NodeNetworks }}
+{{- range .ShootNetworks }}
 route {{ netIP . }} {{ cidrMask . }}
 {{- end }}
 {{- end }}
@@ -50,9 +48,7 @@ route {{ netIP . }} {{ cidrMask . }}
 proto tcp6-server
 server-ipv6 {{ net .OpenVPNNetwork }}
 
-route-ipv6 {{ net .ServiceNetwork }}
-route-ipv6 {{ net .PodNetwork }}
-{{- range .NodeNetworks }}
+{{- range .ShootNetworks }}
 route-ipv6 {{ net . }}
 {{- end }}
 {{- end }}
@@ -79,18 +75,14 @@ status-version 2
 
 var vpnShootClientTemplate = `
 {{- if (eq .IPFamilies  "IPv4") }}
-iroute {{ netIP .ServiceNetwork }} {{ cidrMask .ServiceNetwork }}
-iroute {{ netIP .PodNetwork }} {{ cidrMask .PodNetwork }}
-{{- range .NodeNetworks }}
+{{- range .ShootNetworks }}
 iroute {{ netIP . }} {{ cidrMask . }}
 {{- end }}
 {{- end }}
 
 {{- if (eq .IPFamilies "IPv6") }}
-iroute-ipv6 {{ net .ServiceNetwork }}
-iroute-ipv6 {{ net .PodNetwork }}
-{{- range .NodeNetworks }}
-route-ipv6 {{ net . }}
+{{- range .ShootNetworks }}
+iroute-ipv6 {{ net . }}
 {{- end }}
 {{- end }}
 `
@@ -107,9 +99,7 @@ type config struct {
 	OpenVPNNetwork  net.IPNet
 	IsHA            bool
 	StatusPath      string
-	ServiceNetwork  net.IPNet
-	PodNetwork      net.IPNet
-	NodeNetworks    []net.IPNet
+	ShootNetworks   []net.IPNet
 }
 
 var funcs = map[string]any{"net": netFunc, "netIP": netIP, "cidrMask": cidrMask}

@@ -35,7 +35,7 @@ func firewallCommand() *cobra.Command {
 }
 
 func runFirewallCommand(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error {
-	if mode != "up" || mode != "down" {
+	if mode != "up" && mode != "down" {
 		return errors.New("mode flag must be down or up")
 	}
 
