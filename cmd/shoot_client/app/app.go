@@ -59,7 +59,7 @@ type config struct {
 		KeepAliveProbes   int64 `env:"KEEPALIVE_PROBES" envDefault:"9"`
 	} `envPrefix:"TCP_"`
 	IPFamilies                   string `env:"IP_FAMILIES" envDefault:"IPv4"`
-	Endpoint                     string `env:"Endpoint"`
+	Endpoint                     string `env:"ENDPOINT"`
 	OpenVPNPort                  int    `env:"OPENVPN_PORT" envDefault:"8132"`
 	VPNNetwork                   string `env:"VPN_NETWORK"`
 	IsShootClient                bool   `env:"IS_SHOOT_CLIENT"`
@@ -71,6 +71,7 @@ type config struct {
 	ConfigureBonding             bool   `env:"CONFIGURE_BONDING"`
 	ReversedVPNHeader            string `env:"REVERSED_VPN_HEADER" envDefault:"invalid-host"`
 	HAVPNClients                 int    `env:"HA_VPN_CLIENTS"`
+	HAVPNServers                 int    `env:"HA_VPN_SERVERS"`
 	StartIndex                   int    `env:"START_INDEX" envDefault:"200"`
 	EndIndex                     int    `env:"END_INDEX" envDefault:"254"`
 	PodLabelSelector             string `env:"POD_LABEL_SELECTOR" envDefault:"app=kubernetes,role=apiserver"`
@@ -126,6 +127,20 @@ func configureBonding(ctx context.Context, log logr.Logger, cfg config, vpnNetwo
 		addr, targets = network.ComputeSeedAddrAndTargets(ip, vpnNetwork, cfg.HAVPNClients)
 	}
 
+	for i := range cfg.HAVPNServers {
+		linkName := fmt.Sprintf("tap%d", i)
+		err := deleteLinkByName(linkName)
+		if err != nil {
+			return err
+		}
+
+		cmd := exec.CommandContext(ctx, "openvpn", "--mktun", "--dev", linkName)
+		err = cmd.Run()
+		if err != nil {
+			return err
+		}
+	}
+
 	// check if bond0 already exists and delete it if exists
 	err := deleteLinkByName("bond0")
 	if err != nil {
@@ -158,18 +173,8 @@ func configureBonding(ctx context.Context, log logr.Logger, cfg config, vpnNetwo
 		return err
 	}
 
-	for i := range cfg.HAVPNClients {
-		linkName := fmt.Sprintf("tab%d", i)
-		err = deleteLinkByName(linkName)
-		if err != nil {
-			return err
-		}
-
-		cmd := exec.CommandContext(ctx, "openvpn", "--mktun", "--dev", linkName)
-		err = cmd.Run()
-		if err != nil {
-			return err
-		}
+	for i := range cfg.HAVPNServers {
+		linkName := fmt.Sprintf("tap%d", i)
 
 		link, err := netlink.LinkByName(linkName)
 		if err != nil {
@@ -231,7 +236,7 @@ func vpnConfig(log logr.Logger, cfg config) string {
 
 	if cfg.VPNServerIndex != "" {
 		vpnSeedServer = fmt.Sprintf("vpn-seed-server-%s", cfg.VPNServerIndex)
-		dev = fmt.Sprintf("tun%s", cfg.VPNServerIndex)
+		dev = fmt.Sprintf("tab%s", cfg.VPNServerIndex)
 	}
 
 	log.Info("Generate Config", "vpn-seed-sever", vpnSeedServer, "dev", dev)
@@ -292,7 +297,7 @@ func setIPTableRules(cfg config) error {
 
 	if cfg.IsShootClient {
 		if cfg.IPFamilies == "IPv4" {
-			err = iptable.Append("raw", "FORWARD", "--in-interface", forwardDevice, "-j", "ACCEPT")
+			err = iptable.Append("filter", "FORWARD", "--in-interface", forwardDevice, "-j", "ACCEPT")
 			if err != nil {
 				return err
 			}
@@ -304,14 +309,14 @@ func setIPTableRules(cfg config) error {
 		}
 	} else {
 		// TODO check how to ignore already exits errors
-		_ = iptable.Append("raw", "INPUT", "-m", "state", "--state", "RELATED,ESTABLISHED", "-i", forwardDevice, "-j", "ACCEPT")
-		//if err != nil {
-		//	return err
-		//}
-		_ = iptable.Append("raw", "INPUT", "-m", "-i", forwardDevice, "-j", "DROP")
-		//if err != nil {
-		//	return err
-		//}
+		err = iptable.AppendUnique("filter", "INPUT", "-m", "state", "--state", "RELATED,ESTABLISHED", "-i", forwardDevice, "-j", "ACCEPT")
+		if err != nil {
+			return err
+		}
+		err = iptable.AppendUnique("filter", "INPUT", "-m", "-i", forwardDevice, "-j", "DROP")
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -343,7 +348,14 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 		return err
 	}
 
-	cmd := exec.CommandContext(ctx, "openvpn", "--remote", cfg.Endpoint, "--config", "openvpn.config")
+	dev := "tun0"
+	if cfg.VPNServerIndex != "" {
+		dev = fmt.Sprintf("tab%s", cfg.VPNServerIndex)
+	}
+
+	cmd := exec.CommandContext(ctx, "openvpn", "--dev", dev, "--remote", cfg.Endpoint, "--config", "openvpn.config")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }
 
