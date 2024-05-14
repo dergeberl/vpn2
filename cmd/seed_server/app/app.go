@@ -74,6 +74,11 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 
 	var openVPNNetwork, openVPNNetworkPoolStart, openVPNNetworkPoolEnd string // FIXME we probably want these as netip.Prefix / netip.Addr instead of strings for more flexible use in template
 
+	_ = serviceNetwork
+	_ = podNetwork
+	_ = nodeNetwork
+	_ = openVPNNetworkPoolStart
+	_ = openVPNNetworkPoolEnd
 	switch ipFamilies {
 	case ipV4Family:
 		if vpnNetwork == "" {
