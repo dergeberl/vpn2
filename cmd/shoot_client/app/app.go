@@ -7,16 +7,20 @@ package app
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
+	"time"
 
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/gardener/vpn2/cmd/shoot_client/app/pathcontroller"
 	"github.com/gardener/vpn2/cmd/shoot_client/app/setup"
 	"github.com/gardener/vpn2/pkg/config"
+	network2 "github.com/gardener/vpn2/pkg/network"
 	"github.com/gardener/vpn2/pkg/utils"
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
+	"github.com/vishvananda/netlink"
 	"k8s.io/component-base/version/verflag"
 )
 
@@ -166,6 +170,28 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 	dev := "tun0"
 	if cfg.VPNServerIndex != "" {
 		dev = fmt.Sprintf("tap%s", cfg.VPNServerIndex)
+	}
+
+	if cfg.VPNServerIndex == "" {
+		if err := exec.CommandContext(ctx, "openvpn", "--mktun", "--dev", dev).Run(); err != nil {
+			return fmt.Errorf("creating tunnel device failed: %s", err)
+		}
+		// using pod network
+		// TODO get actual pod network, here the garden local network is used
+		_, ipnet, err := net.ParseCIDR("10.1.0.0/16")
+		if err != nil {
+			panic(err)
+		}
+		go func() {
+			device, err := netlink.LinkByName(dev)
+			if err != nil {
+				panic(err)
+			}
+			time.Sleep(10 * time.Second)
+			if err := network2.RouteReplace(log, ipnet, device); err != nil {
+				panic(err)
+			}
+		}()
 	}
 
 	cmd := exec.CommandContext(ctx, "openvpn", "--dev", dev, "--remote", cfg.Endpoint, "--config", "openvpn.config")

@@ -111,21 +111,27 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 	}
 	cfg.IsHA = isHA
 
+	// Always use ipv6 ULA for the vpn transfer network
+	vpnNetworkPrefix, err := netip.ParsePrefix("fd8f:6d53:b97a:1::/120")
+	if err != nil {
+		return fmt.Errorf("ULA vpn network prefix is not a valid prefix")
+	}
+
 	switch e.IPFamilies {
 	case ipV4Family:
-		vpnNetworkPrefix, err := netip.ParsePrefix(e.VPNNetwork)
-		if err != nil {
-			return fmt.Errorf("vpn network prefix is not a valid prefix, vpn network: %s", e.VPNNetwork)
-		}
-		if !vpnNetworkPrefix.Addr().Is4() {
-			return fmt.Errorf("vpn network prefix is not v4 although v4 address family was specified")
-		}
-		if vpnNetworkPrefix.Bits() != 24 {
-			return fmt.Errorf("invalid prefixlength of vpn network prefix, must be /24, vpn network: %s", e.VPNNetwork)
-		}
-		vpnNetworkPrefixBytes := vpnNetworkPrefix.Addr().As4()
 		switch isHA {
 		case true:
+			vpnNetworkPrefix, err = netip.ParsePrefix(e.VPNNetwork)
+			if err != nil {
+				return fmt.Errorf("vpn network prefix is not a valid prefix, vpn network: %s", e.VPNNetwork)
+			}
+			if !vpnNetworkPrefix.Addr().Is4() {
+				return fmt.Errorf("vpn network prefix is not v4 although v4 address family was specified")
+			}
+			if vpnNetworkPrefix.Bits() != 24 {
+				return fmt.Errorf("invalid prefixlength of vpn network prefix, must be /24, vpn network: %s", e.VPNNetwork)
+			}
+			vpnNetworkPrefixBytes := vpnNetworkPrefix.Addr().As4()
 			vpnNetworkPrefixBytes[3] = byte(vpnIndex * 64)
 			cfg.OpenVPNNetwork, _ = netip.AddrFrom4(vpnNetworkPrefixBytes).Prefix(26)
 			vpnNetworkPrefixBytes[3] = byte(vpnIndex*64 + 8)
@@ -134,10 +140,6 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 			cfg.IPv4PoolEndIP = netip.AddrFrom4(vpnNetworkPrefixBytes).String()
 		case false:
 			cfg.OpenVPNNetwork = vpnNetworkPrefix
-			vpnNetworkPrefixBytes[3] = byte(10)
-			cfg.IPv4PoolStartIP = netip.AddrFrom4(vpnNetworkPrefixBytes).String()
-			vpnNetworkPrefixBytes[3] = byte(254)
-			cfg.IPv4PoolEndIP = netip.AddrFrom4(vpnNetworkPrefixBytes).String()
 		}
 
 	case ipV6Family:

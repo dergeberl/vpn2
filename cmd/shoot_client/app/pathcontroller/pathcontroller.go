@@ -17,7 +17,6 @@ import (
 	"github.com/vishvananda/netlink"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
-	"golang.org/x/sys/unix"
 )
 
 const Name = "path-controller"
@@ -144,7 +143,7 @@ func routeForNetwork(net *net.IPNet, newIP net.IP, bondLink netlink.Link) netlin
 		// Gw is the equivalent to via in ip route replace command
 		Gw:        newIP,
 		Dst:       net,
-		Table:     unix.RT_TABLE_MAIN,
+		Table:     network.RT_TABLE_MAIN,
 		LinkIndex: bondLink.Attrs().Index,
 	}
 }

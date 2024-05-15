@@ -37,21 +37,23 @@ tls-auth "/srv/secrets/tlsauth/vpn.tlsauth" 0
 
 {{- if (eq .Env.IPFamilies "IPv4") }}
 proto tcp4-server
+{{- if .IsHA }}
 server {{ netIP .OpenVPNNetwork }} {{ cidrMask .OpenVPNNetwork }} nopool
 ifconfig-pool {{ .IPv4PoolStartIP }} {{ .IPv4PoolEndIP }}
 
 {{- range .ShootNetworks }}
 route {{ netIP . }} {{ cidrMask . }}
 {{- end }}
+{{- else }}
+server-ipv6 {{ net .OpenVPNNetwork }}
+{{- end }}
+
 {{- end }}
 
 {{- if (eq .Env.IPFamilies "IPv6") }}
 proto tcp6-server
 server-ipv6 {{ net .OpenVPNNetwork }}
 
-{{- range .ShootNetworks }}
-route-ipv6 {{ net . }}
-{{- end }}
 {{- end }}
 
 {{- if .IsHA }}
@@ -65,7 +67,7 @@ dev {{ .Device }}
 {{/* Add firewall rules to block all traffic originating from the shoot cluster.
      The scripts are run after the tun device has been created (up) or removed (down). */ -}}
 script-security 2
-up "/bin/seed-server firewall --mode up --device {{ .Device }}"
+up "/bin/seed-server firewall --mode up --device {{ .Device }}{{if (not .IsHA) }}{{ range .ShootNetworks }} --shoot-network={{ net . }}{{ end }}{{ end }}"
 down "/bin/seed-server firewall --mode down --device {{ .Device }}"
 
 {{ if not (eq .Env.StatusPath "") -}}

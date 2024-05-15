@@ -27,7 +27,7 @@ var _ = Describe("#Config", func() {
 			Device:          "tun0",
 			IPv4PoolStartIP: "192.168.123.10",
 			IPv4PoolEndIP:   "192.168.123.254",
-			OpenVPNNetwork:  parseIPNet("192.168.123.0/24"),
+			OpenVPNNetwork:  parseIPNet("fd8f:6d53:b97a:1::/120"),
 			IsHA:            false,
 			ShootNetworks: []netip.Prefix{
 				parseIPNet("100.64.0.0/13"),
@@ -40,7 +40,7 @@ var _ = Describe("#Config", func() {
 		}
 		cfgIPv6 = config{
 			Device:         "tun0",
-			OpenVPNNetwork: parseIPNet("2001:db8:10::/48"),
+			OpenVPNNetwork: parseIPNet("fd8f:6d53:b97a:1::/120"),
 			IsHA:           false,
 			ShootNetworks: []netip.Prefix{
 				parseIPNet("2001:db8:1::/48"),
@@ -61,10 +61,9 @@ var _ = Describe("#Config", func() {
 			Expect(content).To(ContainSubstring(`tls-auth "/srv/secrets/tlsauth/vpn.tlsauth" 0
 `))
 			Expect(content).To(ContainSubstring(`proto tcp4-server
-server 192.168.123.0 255.255.255.0 nopool
-ifconfig-pool 192.168.123.10 192.168.123.254
+server-ipv6 fd8f:6d53:b97a:1::/120
 `))
-			Expect(content).To(ContainSubstring(`
+			Expect(content).NotTo(ContainSubstring(`
 route 100.64.0.0 255.248.0.0
 route 100.96.0.0 255.224.0.0
 route 10.0.1.0 255.255.255.0
@@ -75,7 +74,7 @@ route 10.0.1.0 255.255.255.0
 
 			Expect(content).To(ContainSubstring(`
 script-security 2
-up "/bin/seed-server firewall --mode up --device tun0"
+up "/bin/seed-server firewall --mode up --device tun0 --shoot-network=100.64.0.0/13 --shoot-network=100.96.0.0/11 --shoot-network=10.0.1.0/24"
 down "/bin/seed-server firewall --mode down --device tun0"`))
 		})
 
@@ -122,9 +121,9 @@ status-version 2`))
 			Expect(content).To(ContainSubstring(`tls-auth "/srv/secrets/tlsauth/vpn.tlsauth" 0
 `))
 			Expect(content).To(ContainSubstring(`proto tcp6-server
-server-ipv6 2001:db8:10::/48
+server-ipv6 fd8f:6d53:b97a:1::/120
 `))
-			Expect(content).To(ContainSubstring(`
+			Expect(content).NotTo(ContainSubstring(`
 route-ipv6 2001:db8:1::/48
 route-ipv6 2001:db8:2::/48
 route-ipv6 2001:db8:3::/48
@@ -134,7 +133,7 @@ dev tun0
 `))
 			Expect(content).To(ContainSubstring(`
 script-security 2
-up "/bin/seed-server firewall --mode up --device tun0"
+up "/bin/seed-server firewall --mode up --device tun0 --shoot-network=2001:db8:1::/48 --shoot-network=2001:db8:2::/48 --shoot-network=2001:db8:3::/48"
 down "/bin/seed-server firewall --mode down --device tun0"`))
 		})
 	})

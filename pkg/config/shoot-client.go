@@ -1,10 +1,11 @@
 package config
 
 import (
-	"github.com/caarlos0/env/v10"
-	"github.com/go-logr/logr"
 	"strconv"
 	"strings"
+
+	"github.com/caarlos0/env/v10"
+	"github.com/go-logr/logr"
 )
 
 type Config struct {
@@ -39,12 +40,17 @@ func GetConfig(log logr.Logger) (Config, error) {
 	if err := env.Parse(&cfg); err != nil {
 		return cfg, err
 	}
-	if cfg.VPNNetwork == "" {
-		if cfg.IPFamilies == "IPv4" {
-			cfg.VPNNetwork = "192.168.123.0/24"
-		} else {
-			cfg.VPNNetwork = "fd8f:6d53:b97a:1::/120"
+	if cfg.VPNServerIndex != "" {
+		if cfg.VPNNetwork == "" {
+			if cfg.IPFamilies == "IPv4" {
+				cfg.VPNNetwork = "192.168.123.0/24"
+			} else {
+				cfg.VPNNetwork = "fd8f:6d53:b97a:1::/120"
+			}
 		}
+	} else {
+		// Always use ipv6 ULA for the vpn transfer network if not HA
+		cfg.VPNNetwork = "fd8f:6d53:b97a:1::/120"
 	}
 	cfg.VPNClientIndex = -1
 	if cfg.PodName != "" {
