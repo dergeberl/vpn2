@@ -18,10 +18,9 @@ ENV GOCACHE=/root/.cache/go-build
 RUN --mount=type=cache,target="/root/.cache/go-build" make build-shoot-client GOARCH=$TARGETARCH
 
 FROM --platform=$TARGETPLATFORM cgr.dev/chainguard/wolfi-base
-RUN apk update
-RUN apk add openvpn iptables ip6tables
-# delete apk to ensure no additional packages can be installed
-RUN rm $(which apk)
-RUN rm -r /var/cache/apk
+RUN apk update && \
+    apk add openvpn ip6tables iptables && \
+    rm $(which apk) && \
+    rm -r /var/cache/apk
 COPY --from=gobuilder /build/bin/shoot-client /bin/shoot-client
 ENTRYPOINT [ "/bin/shoot-client" ]
