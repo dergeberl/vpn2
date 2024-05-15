@@ -9,8 +9,10 @@ REGISTRY                      := europe-docker.pkg.dev/gardener-project/public/g
 PREFIX                        := vpn
 SEED_SERVER_IMAGE_REPOSITORY  := $(REGISTRY)/$(PREFIX)-seed-server
 SEED_SERVER_IMAGE_TAG         := $(VERSION)
+LOCAL_SEED_SERVER_IMAGE_REPO  := localhost:5001/$(subst /,_,$(subst .,_,$(SEED_SERVER_IMAGE_REPOSITORY)))
 SHOOT_CLIENT_IMAGE_REPOSITORY := $(REGISTRY)/$(PREFIX)-shoot-client
 SHOOT_CLIENT_IMAGE_TAG        := $(VERSION)
+LOCAL_SHOOT_CLIENT_IMAGE_REPO := localhost:5001/$(subst /,_,$(subst .,_,$(SHOOT_CLIENT_IMAGE_REPOSITORY)))
 LD_FLAGS                      := "-w $(shell bash $(GARDENER_HACK_DIR)/get-build-ld-flags.sh k8s.io/component-base $(REPO_ROOT)/VERSION "vpn2")"
 
 IMAGE_TAG             := $(VERSION)
@@ -35,11 +37,15 @@ shoot-client-docker-image:
 
 .PHONY: seed-server-to-gardener-local
 seed-server-to-gardener-local: seed-server-docker-image
-	@kind --name gardener-local load docker-image $(SEED_SERVER_IMAGE_REPOSITORY):$(SEED_SERVER_IMAGE_TAG)
+	@docker tag $(SEED_SERVER_IMAGE_REPOSITORY):$(SEED_SERVER_IMAGE_TAG) $(LOCAL_SEED_SERVER_IMAGE_REPO):$(SEED_SERVER_IMAGE_TAG)
+	@docker push $(LOCAL_SEED_SERVER_IMAGE_REPO):$(SEED_SERVER_IMAGE_TAG)
+	@echo "seed server image: $(LOCAL_SEED_SERVER_IMAGE_REPO):$(SEED_SERVER_IMAGE_TAG)"
 
 .PHONY: shoot-client-to-gardener-local
 shoot-client-to-gardener-local: shoot-client-docker-image
-	@kind --name gardener-local load docker-image $(SHOOT_CLIENT_IMAGE_REPOSITORY):$(SHOOT_CLIENT_IMAGE_TAG)
+	@docker tag $(SHOOT_CLIENT_IMAGE_REPOSITORY):$(SHOOT_CLIENT_IMAGE_TAG) $(LOCAL_SHOOT_CLIENT_IMAGE_REPO):$(SHOOT_CLIENT_IMAGE_TAG)
+	@docker push $(LOCAL_SHOOT_CLIENT_IMAGE_REPO):$(SHOOT_CLIENT_IMAGE_TAG)
+	@echo "shoot client image: $(LOCAL_SHOOT_CLIENT_IMAGE_REPO):$(SHOOT_CLIENT_IMAGE_TAG)"
 
 .PHONY: docker-images
 docker-images: seed-server-docker-image shoot-client-docker-image
