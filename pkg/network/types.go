@@ -19,14 +19,15 @@ func (c *CIDR) UnmarshalText(text []byte) error {
 	return nil
 }
 
-func (c *CIDR) String() string {
-	s := (*net.IPNet)(c).String()
+func (c CIDR) String() string {
+	s := c.ToIPNet().String()
 	if s == "<nil>" {
 		return ""
 	}
 	return s
 }
 
-func (c *CIDR) ToIPNet() *net.IPNet {
-	return (*net.IPNet)(c)
+func (c CIDR) ToIPNet() *net.IPNet {
+	netw := net.IPNet(c)
+	return &netw
 }

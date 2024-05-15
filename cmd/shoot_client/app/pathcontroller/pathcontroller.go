@@ -17,6 +17,7 @@ import (
 	"github.com/vishvananda/netlink"
 	"golang.org/x/net/icmp"
 	"golang.org/x/net/ipv4"
+	"golang.org/x/sys/unix"
 )
 
 const Name = "path-controller"
@@ -81,7 +82,8 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 	}
 
 	pingRouter := &PingRouter{
-		checkedNet: (*net.IPNet)(&checkNetwork),
+		cfg:        cfg,
+		checkedNet: checkNetwork.ToIPNet(),
 		goodIPs:    make(map[string]struct{}),
 		log:        log.WithName("pingRouter"),
 	}
@@ -118,16 +120,17 @@ func (p *PingRouter) updateRouting(newIP net.IP) error {
 	}
 
 	nets := []*net.IPNet{
-		(*net.IPNet)(&p.cfg.ServiceNetwork),
-		(*net.IPNet)(&p.cfg.PodNetwork),
+		p.cfg.ServiceNetwork.ToIPNet(),
+		p.cfg.PodNetwork.ToIPNet(),
 	}
 	if p.cfg.NodeNetwork.String() != "" {
-		nets = append(nets, (*net.IPNet)(&p.cfg.NodeNetwork))
+		nets = append(nets, p.cfg.NodeNetwork.ToIPNet())
 	}
 
 	for _, net := range nets {
 		route := routeForNetwork(net, newIP, bondDev)
-		err := netlink.RouteReplace(&route)
+		p.log.Info("replacing route", "route", route, "net", net)
+		err = netlink.RouteReplace(&route)
 		if err != nil {
 			return fmt.Errorf("error replacing route for %s: %w", net, err)
 		}
@@ -136,11 +139,12 @@ func (p *PingRouter) updateRouting(newIP net.IP) error {
 }
 
 func routeForNetwork(net *net.IPNet, newIP net.IP, bondLink netlink.Link) netlink.Route {
+	// ip route replace $net via $newIp dev bond0
 	return netlink.Route{
-		Via: &netlink.Via{
-			Addr: newIP,
-		},
+		// Gw is the equivalent to via in ip route replace command
+		Gw:        newIP,
 		Dst:       net,
+		Table:     unix.RT_TABLE_MAIN,
 		LinkIndex: bondLink.Attrs().Index,
 	}
 }
@@ -174,8 +178,11 @@ func (p *PingRouter) pingAllShootClients(clients []net.IP) {
 			p.mu.Lock()
 			defer p.mu.Unlock()
 			if err != nil {
+				p.log.Error(err, "error pinging")
+				p.log.Info("client not healthy, removing from pool", "ip", client)
 				delete(p.goodIPs, client.String())
 			} else {
+				p.log.Info("client healthy", "ip", client)
 				p.goodIPs[client.String()] = struct{}{}
 			}
 		}()
