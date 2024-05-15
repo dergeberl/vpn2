@@ -33,6 +33,7 @@ type Config struct {
 	PodLabelSelector             string `env:"POD_LABEL_SELECTOR" envDefault:"app=kubernetes,role=apiserver"`
 	WaitSeconds                  int    `env:"WAIT_SECONDS" envDefault:"2"`
 	DoNotConfigureKernelSettings bool   `env:"DO_NOT_CONFIGURE_KERNEL_SETTINGS" envDefault:"false"`
+	SeedPodNetwork               string `env:"SEED_POD_NETWORK" envDefault:"10.1.0.0/16"`
 }
 
 func GetConfig(log logr.Logger) (Config, error) {

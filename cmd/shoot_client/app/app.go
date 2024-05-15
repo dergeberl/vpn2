@@ -178,7 +178,7 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 		}
 		// using pod network
 		// TODO get actual pod network, here the garden local network is used
-		_, ipnet, err := net.ParseCIDR("10.1.0.0/16")
+		_, ipnet, err := net.ParseCIDR(cfg.SeedPodNetwork)
 		if err != nil {
 			panic(err)
 		}
