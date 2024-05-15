@@ -7,16 +7,17 @@ package app
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
+
 	"github.com/coreos/go-iptables/iptables"
-	"github.com/gardener/vpn2/cmd/shoot_client/app/init"
 	"github.com/gardener/vpn2/cmd/shoot_client/app/pathcontroller"
+	"github.com/gardener/vpn2/cmd/shoot_client/app/setup"
 	"github.com/gardener/vpn2/pkg/config"
 	"github.com/gardener/vpn2/pkg/utils"
 	"github.com/go-logr/logr"
 	"github.com/spf13/cobra"
 	"k8s.io/component-base/version/verflag"
-	"os"
-	"os/exec"
 )
 
 // Name is a const for the name of this component.
@@ -41,7 +42,7 @@ func NewCommand() *cobra.Command {
 	flags := cmd.Flags()
 	verflag.AddFlags(flags)
 	cmd.AddCommand(pathcontroller.NewCommand())
-	cmd.AddCommand(init.NewCommand())
+	cmd.AddCommand(setup.NewCommand())
 	return cmd
 }
 
@@ -143,7 +144,7 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 	log.Info("config parsed", "config", cfg)
 
 	// TODO move to subcommand
-	err = init.Run(ctx, cancel, log)
+	err = setup.Run(ctx, cancel, log)
 	if err != nil {
 		return err
 	}
@@ -168,6 +169,7 @@ func run(ctx context.Context, cancel context.CancelFunc, log logr.Logger) error 
 	}
 
 	cmd := exec.CommandContext(ctx, "openvpn", "--dev", dev, "--remote", cfg.Endpoint, "--config", "openvpn.config")
+	log.Info("running openvpn", "command", cmd)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()

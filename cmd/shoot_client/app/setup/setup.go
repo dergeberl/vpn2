@@ -1,23 +1,25 @@
-package init
+package setup
 
 import (
 	"context"
 	"fmt"
+	"net"
+	"time"
+
 	"github.com/cilium/cilium/pkg/sysctl"
 	"github.com/gardener/vpn2/pkg/config"
 	"github.com/gardener/vpn2/pkg/ippool"
 	"github.com/gardener/vpn2/pkg/network"
 	"github.com/go-logr/logr"
 	"github.com/vishvananda/netlink"
-	"net"
-	"time"
+
+	"os/exec"
 
 	"github.com/gardener/vpn2/pkg/utils"
 	"github.com/spf13/cobra"
-	"os/exec"
 )
 
-const Name = "init"
+const Name = "setup"
 
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
@@ -82,9 +84,6 @@ func kernelSettings(cfg config.Config) error {
 		return err
 	}
 	if err := sysctl.WriteInt("net.ipv4.tcp_keepalive_probes", cfg.TCP.KeepAliveProbes); err != nil {
-		return err
-	}
-	if err := sysctl.Write("net.ipv4.ping_group_range", "0 65532"); err != nil {
 		return err
 	}
 	return nil
